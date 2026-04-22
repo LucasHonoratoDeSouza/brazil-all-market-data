@@ -3,12 +3,16 @@
 Brazil All Market Data — Local data mining pipeline.
 
 Reads all collected CSVs and produces derived datasets under data/mined/:
-  equities_daily_returns.csv    Daily % returns for stocks + indices
-  fiis_daily_returns.csv        Daily % returns for FIIs
-  etfs_daily_returns.csv        Daily % returns for ETFs
-  currencies_daily_returns.csv  Daily % returns for FX / crypto
-  commodities_daily_returns.csv Daily % returns for commodities
-  assets_summary.csv            Per-asset statistics (return, volatility, etc.)
+  equities_daily_returns.csv      Daily % returns for stocks + indices
+  fiis_daily_returns.csv          Daily % returns for FIIs
+  etfs_daily_returns.csv          Daily % returns for B3 ETFs
+  bdrs_daily_returns.csv          Daily % returns for BDRs
+  currencies_daily_returns.csv    Daily % returns for FX / crypto
+  commodities_daily_returns.csv   Daily % returns for commodities
+  bonds_daily_returns.csv         Daily % returns for bond ETFs
+  real_assets_daily_returns.csv   Daily % returns for real asset ETFs
+  alternatives_daily_returns.csv  Daily % returns for alternative ETFs
+  assets_summary.csv              Per-asset statistics (return, volatility, etc.)
 """
 
 from pathlib import Path
@@ -20,15 +24,18 @@ MINED_DIR = BASE_DATA_DIR / "mined"
 
 # Directories with market-price CSVs to process
 PRICE_DIRS = {
-    "equity":    [
+    "equity":      [
         BASE_DATA_DIR / "equities" / "stocks",
         BASE_DATA_DIR / "equities" / "indices",
     ],
-    "fii":       [BASE_DATA_DIR / "fiis"],
-    "etf":       [BASE_DATA_DIR / "etfs"],
-    "bdr":       [BASE_DATA_DIR / "bdrs"],
-    "currency":  [BASE_DATA_DIR / "currencies"],
-    "commodity": [BASE_DATA_DIR / "commodities"],
+    "fii":         [BASE_DATA_DIR / "fiis"],
+    "etf":         [BASE_DATA_DIR / "etfs"],
+    "bdr":         [BASE_DATA_DIR / "bdrs"],
+    "currency":    [BASE_DATA_DIR / "currencies"],
+    "commodity":   [BASE_DATA_DIR / "commodities"],
+    "bond":        [BASE_DATA_DIR / "bonds"],
+    "real_asset":  [BASE_DATA_DIR / "real_assets"],
+    "alternative": [BASE_DATA_DIR / "alternatives"],
 }
 
 
@@ -118,11 +125,15 @@ def main():
     MINED_DIR.mkdir(parents=True, exist_ok=True)
 
     output_names = {
-        "equity":    "equities_daily_returns",
-        "fii":       "fiis_daily_returns",
-        "etf":       "etfs_daily_returns",
-        "currency":  "currencies_daily_returns",
-        "commodity": "commodities_daily_returns",
+        "equity":      "equities_daily_returns",
+        "fii":         "fiis_daily_returns",
+        "etf":         "etfs_daily_returns",
+        "bdr":         "bdrs_daily_returns",
+        "currency":    "currencies_daily_returns",
+        "commodity":   "commodities_daily_returns",
+        "bond":        "bonds_daily_returns",
+        "real_asset":  "real_assets_daily_returns",
+        "alternative": "alternatives_daily_returns",
     }
 
     summary_frames = []
