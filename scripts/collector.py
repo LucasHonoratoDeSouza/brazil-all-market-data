@@ -1,29 +1,31 @@
 #!/usr/bin/env python3
 """
-Brazil All Market Data — Comprehensive data collector.
+Brazil All Market Data — Maximum coverage collector.
 
-Focus: maximum Brazilian + global market data, including assets with
-low correlation to equities (bonds, real assets, alternatives, volatility).
+Goal: collect ALL data relevant to the B3 — every asset class listed on
+the exchange plus every external variable known to influence Brazilian markets.
 
 Data sources:
   - Banco Central do Brasil / SGS API  (via python-bcb)
   - Yahoo Finance                       (via yfinance)
 
 Directories created under data/:
-  macro/          BCB macro-economic indicators + PTAX rates
-  fixed_income/   BCB fixed-income yields, credit, poupança
-  macro_setorial/ BCB sectoral/activity indicators
+  macro/            BCB macro indicators + PTAX (55+ series)
+  fixed_income/     BCB fixed-income yields, credit, poupança (22+ series)
+  macro_setorial/   BCB sectoral activity: industry, services, construction (15+ series)
   equities/
-    stocks/       B3 equities — ~130 tickers (OHLCV)
-    indices/      B3 indices + key international references
-  fiis/           Brazilian real-estate funds — ~75 tickers
-  etfs/           B3-listed ETFs — ~30 tickers
-  bdrs/           Brazilian Depositary Receipts — ~40 tickers
-  currencies/     BRL FX pairs + main crypto (via yfinance)
-  commodities/    Commodity futures relevant to Brazil
-  bonds/          Fixed-income ETFs — Treasuries, IG, HY, EM, TIPS (low equity corr.)
-  real_assets/    Infrastructure, REITs, timber, water, ag ETFs (low equity corr.)
-  alternatives/   Thematic, factor, volatility, EM ETFs (low equity corr.)
+    stocks/         B3 equities — ~290 tickers (OHLCV)
+    indices/        B3 indices + global references
+  fiis/             Brazilian real-estate funds — ~130 tickers
+  etfs/             B3-listed ETFs — ~50 tickers
+  bdrs/             Brazilian Depositary Receipts — ~90 tickers
+  currencies/       BRL FX pairs + crypto
+  commodities/      Commodity futures relevant to Brazil
+  global_macro/     External drivers of B3 — China, iron ore, LatAm, US yields,
+                    credit spreads, steel, agro majors, volatility indices
+  bonds/            Fixed-income ETFs (Treasuries, IG, HY, EM, TIPS)
+  real_assets/      Infrastructure, REITs, timber, water, ag ETFs
+  alternatives/     Thematic, factor, volatility, EM ETFs
 """
 
 import os
@@ -47,6 +49,7 @@ ETFS_DIR              = os.path.join(BASE_DIR, "etfs")
 BDRS_DIR              = os.path.join(BASE_DIR, "bdrs")
 CURRENCIES_DIR        = os.path.join(BASE_DIR, "currencies")
 COMMODITIES_DIR       = os.path.join(BASE_DIR, "commodities")
+GLOBAL_MACRO_DIR      = os.path.join(BASE_DIR, "global_macro")
 BONDS_DIR             = os.path.join(BASE_DIR, "bonds")
 REAL_ASSETS_DIR       = os.path.join(BASE_DIR, "real_assets")
 ALTERNATIVES_DIR      = os.path.join(BASE_DIR, "alternatives")
@@ -56,6 +59,7 @@ ALL_DIRS = [
     STOCKS_DIR, INDICES_DIR,
     FIIS_DIR, ETFS_DIR, BDRS_DIR,
     CURRENCIES_DIR, COMMODITIES_DIR,
+    GLOBAL_MACRO_DIR,
     BONDS_DIR, REAL_ASSETS_DIR, ALTERNATIVES_DIR,
 ]
 
@@ -123,24 +127,28 @@ BCB_MACRO_SERIES = {
     "ipca_alimentos":               1635,  # IPCA — alimentação e bebidas
     "ipca_habitacao":               1636,  # IPCA — habitação
     "ipca_transportes":             1637,  # IPCA — transportes
-    "ipca_saude":                   1638,  # IPCA — saúde
+    "ipca_saude":                   1638,  # IPCA — saúde e cuidados pessoais
     "ipca_vestuario":               1639,  # IPCA — vestuário
     "ipca_comunicacao":             1640,  # IPCA — comunicação
     "ipca_educacao":                1641,  # IPCA — educação
     "ipca_servicos":                10844, # IPCA — serviços (% mensal)
+    "ipca_bens_industriais":        10843, # IPCA — bens industriais
     # ── Atividade econômica ──
     "gdp_yearly":                   7,     # PIB anual (% variação real)
     "pib_mensal_valor":             4380,  # PIB mensal corrente (R$ milhões)
     "ibc_br":                       24364, # IBC-Br — proxy mensal de atividade
     "producao_industrial":          21859, # PIM-PF — produção industrial (índice)
     "vendas_varejo_pmc":            1455,  # PMC — vendas varejo (índice quantum)
+    "vendas_varejo_ampliado":       1479,  # PMC ampliado (inclui veículos e mat. construção)
     "confianca_consumidor":         4393,  # ICC FGV — confiança do consumidor
     "confianca_empresarial":        7344,  # ICI FGV — confiança industrial
+    "nuci":                         28694, # NUCI FGV — nível de utilização da cap. instalada
     # ── Mercado de trabalho ──
     "desemprego_pnad":              24369, # PNAD Contínua — taxa desemprego (%)
-    "caged_saldo":                  28763, # CAGED — admissões líquidas
+    "caged_saldo":                  28763, # CAGED — admissões líquidas (emprego formal)
     "rendimento_real_medio":        24382, # Rendimento real médio habitual (R$)
     "salario_minimo":               1619,  # Salário mínimo vigente (R$)
+    "massa_salarial":               28544, # Massa de rendimentos habituais (R$ bi)
     # ── Setor externo ──
     "exportacoes_fob":              22707, # Exportações FOB (US$ mi)
     "importacoes_fob":              22708, # Importações FOB (US$ mi)
@@ -150,6 +158,9 @@ BCB_MACRO_SERIES = {
     "reservas_internacionais":      3546,  # Reservas internacionais (US$ bi)
     "divida_externa_bruta":         3585,  # Dívida externa bruta total (US$ bi)
     "fluxo_cambial_liquido":        23986, # Fluxo cambial líquido total (US$ mi)
+    "exportacoes_basicos":          22765, # Exportações — básicos (US$ mi)
+    "exportacoes_semimanuf":        22766, # Exportações — semimanufaturados (US$ mi)
+    "exportacoes_manufaturados":    22767, # Exportações — manufaturados (US$ mi)
     # ── Fiscal e monetário ──
     "divida_bruta_pib":             4168,  # Dívida bruta governo geral (% PIB)
     "divida_liquida_pib":           2053,  # Dívida líquida setor público (% PIB)
@@ -172,6 +183,7 @@ BCB_MACRO_SERIES = {
     "ptax_ars_venda":               3542,  # ARS/BRL PTAX venda
     "ptax_mxn_venda":               3544,  # MXN/BRL PTAX venda (100 MXN)
 }
+
 
 # ─── BCB Fixed Income + Credit ────────────────────────────────────────────────
 
@@ -206,43 +218,47 @@ BCB_FIXED_INCOME_SERIES = {
     "comprometimento_renda":    29038, # Comprometimento de renda c/ serviço da dívida
 }
 
+
 # ─── BCB Sectoral / Activity indicators ──────────────────────────────────────
 
 BCB_SECTORAL_SERIES = {
-    # ── Produção física ──
-    "producao_veiculos":            7383,  # Produção de veículos (ANFAVEA, unidades)
-    "licenciamentos_veiculos":      1374,  # Licenciamentos (Fenabrave, unidades)
+    # ── Indústria — produção física ──
+    "producao_veiculos":            1374,  # Licenciamentos Fenabrave (unidades)
     "producao_aco_bruto":           7382,  # Produção de aço bruto (mil toneladas)
     "producao_cimento":             7384,  # Produção de cimento (mil toneladas)
     "producao_papel_papelao":       7386,  # Produção de papel e papelão (toneladas)
-    # ── Comércio exterior — detalhe ──
-    "exportacoes_basicos":          22765, # Exportações básicos (US$ mi)
-    "exportacoes_semimanuf":        22766, # Exportações semimanufaturados (US$ mi)
-    "exportacoes_manufaturados":    22767, # Exportações manufaturados (US$ mi)
-    # ── Turismo / Serviços ──
-    "receitas_turismo":             22709, # placeholder — substituir se necessário
-    # ── Mercado imobiliário ──
-    "financiamentos_sbpe":          7383,  # SBPE — financiamentos imobiliários — verificar
-    # ── Energia ──
-    "consumo_energia_industrial":   1406,  # placeholder — verificar código correto
+    "extracao_petroleo":            7388,  # Extração de petróleo (mil barris/dia)
+    "geracao_energia_eletrica":     7415,  # Geração de energia elétrica (GWh)
+    # ── Confiança e utilização ──
+    "nuci_industria":               28694, # NUCI FGV — cap. instalada industrial (%)
+    "confianca_comercio":           28745, # ICS FGV — confiança do comércio
+    "confianca_servicos":           24352, # ICS FGV — confiança do setor de serviços
+    "confianca_construcao":         24283, # ICST FGV — confiança da construção civil
+    # ── Crédito setorial ──
+    "credito_habitacional_sbpe":    4464,  # SBPE — financiamentos (R$ mi)
+    "credito_consignado":           25060, # Crédito consignado total (R$ mi)
+    # ── Produção agropecuária ──
+    "producao_soja_ibge":           7391,  # Produção de soja (mil toneladas)
+    "producao_milho_ibge":          7392,  # Produção de milho (mil toneladas)
+    "producao_cana_ibge":           7393,  # Produção de cana-de-açúcar (mil toneladas)
 }
 
 
 def fetch_macro_data():
-    print("\n[1/13] Fetching macro & PTAX indicators from BCB/SGS...")
+    print("\n[1/14] Fetching macro & PTAX indicators from BCB/SGS...")
     ensure_dirs()
     for name, code in BCB_MACRO_SERIES.items():
         _fetch_bcb(code, name, MACRO_DIR)
 
 
 def fetch_fixed_income_data():
-    print("\n[2/13] Fetching fixed-income & credit indicators from BCB/SGS...")
+    print("\n[2/14] Fetching fixed-income & credit indicators from BCB/SGS...")
     for name, code in BCB_FIXED_INCOME_SERIES.items():
         _fetch_bcb(code, name, FIXED_INCOME_DIR)
 
 
 def fetch_sectoral_data():
-    print("\n[3/13] Fetching sectoral/activity indicators from BCB/SGS...")
+    print("\n[3/14] Fetching sectoral/activity indicators from BCB/SGS...")
     for name, code in BCB_SECTORAL_SERIES.items():
         _fetch_bcb(code, name, MACRO_SETORIAL_DIR)
 
@@ -267,38 +283,46 @@ def _yf_download(ticker: str, name: str, target_dir: str, start: str = "2000-01-
 
 CURRENCIES = {
     # ── BRL FX ──
-    "usd_brl":   "USDBRL=X",
-    "eur_brl":   "EURBRL=X",
-    "gbp_brl":   "GBPBRL=X",
-    "jpy_brl":   "JPYBRL=X",
-    "cny_brl":   "CNYBRL=X",
-    "chf_brl":   "CHFBRL=X",
-    "aud_brl":   "AUDBRL=X",
-    "cad_brl":   "CADBRL=X",
-    "mxn_brl":   "MXNBRL=X",
-    "ars_brl":   "ARSBRL=X",
-    # ── Referência global ──
-    "dxy":       "DX-Y.NYB",  # Índice dólar (DXY)
-    "eur_usd":   "EURUSD=X",
-    # ── Crypto (em BRL e USD) ──
-    "btc_brl":   "BTC-BRL",
-    "btc_usd":   "BTC-USD",
-    "eth_brl":   "ETH-BRL",
-    "eth_usd":   "ETH-USD",
-    "bnb_usd":   "BNB-USD",
-    "sol_usd":   "SOL-USD",
-    "xrp_usd":   "XRP-USD",
-    "ada_usd":   "ADA-USD",
-    "dot_usd":   "DOT-USD",
-    "link_usd":  "LINK-USD",
-    "matic_usd": "MATIC-USD",
-    "avax_usd":  "AVAX-USD",
-    "atom_usd":  "ATOM-USD",
+    "usd_brl":    "USDBRL=X",
+    "eur_brl":    "EURBRL=X",
+    "gbp_brl":    "GBPBRL=X",
+    "jpy_brl":    "JPYBRL=X",
+    "cny_brl":    "CNYBRL=X",
+    "chf_brl":    "CHFBRL=X",
+    "aud_brl":    "AUDBRL=X",
+    "cad_brl":    "CADBRL=X",
+    "mxn_brl":    "MXNBRL=X",
+    "ars_brl":    "ARSBRL=X",
+    "clp_brl":    "CLPBRL=X",   # Peso chileno
+    "cop_brl":    "COPBRL=X",   # Peso colombiano
+    "try_brl":    "TRYBRL=X",   # Lira turca (peer EM)
+    "zar_brl":    "ZARBRL=X",   # Rand sul-africano (peer EM)
+    "rub_brl":    "RUBBRL=X",   # Rublo (peer commodities)
+    # ── Cross rates ──
+    "dxy":        "DX-Y.NYB",   # Índice dólar DXY
+    "eur_usd":    "EURUSD=X",
+    "usd_cny":    "USDCNY=X",   # Dólar-Yuan (chave para commodities)
+    # ── Crypto em BRL e USD ──
+    "btc_brl":    "BTC-BRL",
+    "btc_usd":    "BTC-USD",
+    "eth_brl":    "ETH-BRL",
+    "eth_usd":    "ETH-USD",
+    "bnb_usd":    "BNB-USD",
+    "sol_usd":    "SOL-USD",
+    "xrp_usd":    "XRP-USD",
+    "ada_usd":    "ADA-USD",
+    "dot_usd":    "DOT-USD",
+    "link_usd":   "LINK-USD",
+    "matic_usd":  "MATIC-USD",
+    "avax_usd":   "AVAX-USD",
+    "atom_usd":   "ATOM-USD",
+    "ltc_usd":    "LTC-USD",
+    "usdt_brl":   "USDT-BRL",
 }
 
 
 def fetch_currency_data():
-    print("\n[4/13] Fetching BRL FX pairs & crypto from yfinance...")
+    print("\n[4/14] Fetching BRL FX pairs & crypto from yfinance...")
     for name, ticker in CURRENCIES.items():
         _yf_download(ticker, name, CURRENCIES_DIR)
 
@@ -315,232 +339,339 @@ INDICES = {
     "ibov_proxy":       "BOVA11.SA",
     "smal_proxy":       "SMAL11.SA",
     "imat_proxy":       "MATB11.SA",
-    # ── Referências internacionais ──
+    "ifnc_proxy":       "FIND11.SA",
+    "iutil_proxy":      "UTIL11.SA",
+    # ── Referências globais ──
     "sp500":            "^GSPC",
     "nasdaq":           "^IXIC",
     "dow_jones":        "^DJI",
     "russell2000":      "^RUT",
     "ftse100":          "^FTSE",
     "dax":              "^GDAXI",
+    "cac40":            "^FCHI",
     "nikkei225":        "^N225",
     "hang_seng":        "^HSI",
     "shanghai":         "000001.SS",
     "eurostoxx50":      "^STOXX50E",
-    "bovespa_usd_ewz":  "EWZ",       # Brasil em USD (referência internacional)
-    # ── Risco / juros ──
+    "msci_em":          "EEM",       # EM (via ETF)
+    "msci_latam":       "ILF",       # América Latina (via ETF)
+    "bovespa_usd":      "EWZ",       # Brasil em USD
+    # ── Risco / Juros / Volatilidade ──
     "vix":              "^VIX",
     "tnx_10y":          "^TNX",
-    "tyx_30y":          "^TYX",      # Treasury EUA 30 anos
-    "irx_13w":          "^IRX",      # T-Bill 13 semanas (taxa livre de risco EUA)
+    "tyx_30y":          "^TYX",
+    "fvx_5y":           "^FVX",
+    "irx_3m":           "^IRX",
 }
 
 
 def fetch_equity_indices():
-    print("\n[5/13] Fetching equity indices...")
+    print("\n[5/14] Fetching equity indices...")
     for name, ticker in INDICES.items():
         _yf_download(ticker, name, INDICES_DIR)
 
 
-# ─── B3 stocks (~130 tickers) ─────────────────────────────────────────────────
+# ─── B3 stocks — IBrX-200 + SMLL + outros líquidos (~290 tickers) ─────────────
 
 TOP_STOCKS = [
-    # ── Petróleo / Energia ──
+    # ── Petróleo / Energia / Gás ──
     "PETR4.SA", "PETR3.SA", "PRIO3.SA", "CSAN3.SA", "VBBR3.SA",
-    "RRRP3.SA", "RECV3.SA", "ENGI11.SA", "AURE3.SA",
+    "RRRP3.SA", "RECV3.SA", "RPMG3.SA", "CGAS3.SA", "CGAS5.SA",
+    "3RCO3.SA", "LEVE3.SA", "PTNT3.SA",
+    # ── Energia elétrica / Renováveis / Utilities ──
+    "EGIE3.SA", "EQTL3.SA", "TAEE11.SA", "CPFE3.SA", "ENBR3.SA",
+    "ELET3.SA", "ELET6.SA", "CMIG4.SA", "CMIG3.SA", "CPLE6.SA",
+    "CPLE3.SA", "SBSP3.SA", "SAPR11.SA", "SAPR3.SA", "SAPR4.SA",
+    "ENEV3.SA", "AESB3.SA", "NEOE3.SA", "ALUP11.SA", "ALUP3.SA",
+    "AURE3.SA", "ENGI11.SA", "ENGI3.SA", "ENGI4.SA", "EQPA3.SA",
+    "EQPA7.SA", "TRPL4.SA", "TRPL3.SA", "EMAE3.SA", "CEEB3.SA",
+    "COCE5.SA", "CLSC4.SA", "CLSC3.SA", "CSMG3.SA", "GEPA4.SA",
+    "GEPA3.SA", "DESA3.SA",
+    # ── Saneamento ──
+    "CSBR3.SA", "AMBP3.SA",
     # ── Mineração / Siderurgia / Metalurgia ──
-    "VALE3.SA", "GGBR4.SA", "CSNA3.SA", "USIM5.SA", "BRAP4.SA",
-    "FESA4.SA", "CMIN3.SA", "CBAV3.SA",
-    # ── Financeiro / Bancos / Seguros ──
-    "ITUB4.SA", "BBDC4.SA", "BBAS3.SA", "ITSA4.SA", "BPAC11.SA",
-    "SANB11.SA", "BRSR6.SA", "BMGB4.SA", "ABCB4.SA", "BBDC3.SA",
-    "PSSA3.SA", "SULA11.SA", "IRBR3.SA", "CXSE3.SA",
+    "VALE3.SA", "VALE5.SA", "GGBR4.SA", "GGBR3.SA", "GOAU4.SA",
+    "GOAU3.SA", "CSNA3.SA", "USIM5.SA", "USIM3.SA", "BRAP4.SA",
+    "BRAP3.SA", "FESA4.SA", "FESA3.SA", "CMIN3.SA", "CBAV3.SA",
+    "MOAR3.SA", "HBOR3.SA",
+    # ── Petroquímica / Química ──
+    "UNIP6.SA", "UNIP3.SA", "BRKM5.SA", "BRKM3.SA",
+    # ── Financeiro / Bancos ──
+    "ITUB4.SA", "ITUB3.SA", "BBDC4.SA", "BBDC3.SA", "BBAS3.SA",
+    "BBAS11.SA", "ITSA4.SA", "ITSA3.SA", "BPAC11.SA", "BPAC3.SA",
+    "SANB11.SA", "SANB3.SA", "SANB4.SA", "BRSR6.SA", "BRSR3.SA",
+    "BRSR5.SA", "BMGB4.SA", "BMGB3.SA", "ABCB4.SA", "ABCB3.SA",
+    "BPAN4.SA", "PINE4.SA", "PINE3.SA", "MODL3.SA", "BRGE7.SA",
+    "BMEB4.SA", "BMEB3.SA",
+    # ── Seguros / Previdência ──
+    "PSSA3.SA", "SULA11.SA", "IRBR3.SA", "CXSE3.SA", "BBSE3.SA",
+    "WIZS3.SA", "ODPV3.SA", "QUAL3.SA",
     # ── Fintechs / Bancos digitais ──
     "NUBR33.SA", "INTR3.SA", "XPBR31.SA", "CASH3.SA", "PAGS34.SA",
+    "MELI34.SA",
     # ── Consumo / Varejo / Alimentação ──
     "ABEV3.SA", "LREN3.SA", "MGLU3.SA", "VVAR3.SA", "NTCO3.SA",
-    "SOMA3.SA", "ALPA4.SA", "MDIA3.SA", "PCAR3.SA", "ASAI3.SA",
-    "CRFB3.SA", "AMAR3.SA", "ARZZ3.SA", "SBFG3.SA", "GMAT3.SA",
-    "VIVA3.SA",
+    "SOMA3.SA", "ALPA4.SA", "ALPA3.SA", "MDIA3.SA", "PCAR3.SA",
+    "ASAI3.SA", "CRFB3.SA", "AMAR3.SA", "ARZZ3.SA", "SBFG3.SA",
+    "GMAT3.SA", "VIVA3.SA", "VIVR3.SA", "GRND3.SA", "CEAB3.SA",
+    "VULC3.SA", "CGRA4.SA", "ESPA3.SA", "VSTE3.SA", "LLIS3.SA",
+    "HGTX3.SA", "MOVI3.SA", "JALL3.SA", "CAMB3.SA", "DOHL4.SA",
+    "FHER3.SA",
     # ── Frigoríficos / Proteínas ──
-    "JBSS3.SA", "MRFG3.SA", "BEEF3.SA", "BRFS3.SA",
-    # ── Telecom / Mídia ──
-    "VIVT3.SA", "TIMS3.SA", "OIBR3.SA",
+    "JBSS3.SA", "MRFG3.SA", "BEEF3.SA", "BRFS3.SA", "CAML3.SA",
+    # ── Agronegócio / Açúcar-Etanol / Grãos ──
+    "SLCE3.SA", "AGRO3.SA", "SMTO3.SA", "RAIZ4.SA", "TTEN3.SA",
+    "LAND3.SA", "LJQQ3.SA", "SLC3.SA", "SOJA3.SA",
+    # ── Papel / Celulose / Florestal ──
+    "SUZB3.SA", "KLBN11.SA", "KLBN3.SA", "KLBN4.SA", "DTEX3.SA",
+    "RANI3.SA", "DXCO3.SA",
+    # ── Telecom / Mídia / Tecnologia ──
+    "VIVT3.SA", "TIMS3.SA", "OIBR3.SA", "TOTS3.SA", "LWSA3.SA",
+    "INTB3.SA", "SQIA3.SA", "BSEV3.SA", "SEQL3.SA", "ROMI3.SA",
+    "NGRD3.SA",
     # ── Construção civil / Incorporadoras ──
     "CYRE3.SA", "MRVE3.SA", "DIRR3.SA", "EVEN3.SA", "TEND3.SA",
     "EZTC3.SA", "TRIS3.SA", "MTRE3.SA", "MELK3.SA", "JHSF3.SA",
-    # ── Shoppings / Imóveis ──
-    "MULT3.SA", "IGTI11.SA", "BRPR3.SA",
-    # ── Elétrico / Utilities / Saneamento ──
-    "EGIE3.SA", "EQTL3.SA", "TAEE11.SA", "CPFE3.SA", "ENBR3.SA",
-    "ELET3.SA", "ELET6.SA", "CMIG4.SA", "CPLE6.SA", "SBSP3.SA",
-    "SAPR11.SA", "ENEV3.SA", "AESB3.SA",
-    # ── Transporte / Logística / Aviação ──
+    "LAVV3.SA", "CALI3.SA", "CALI4.SA", "HELN3.SA", "TFCO4.SA",
+    "RSID3.SA", "GFSA3.SA", "PLPL3.SA",
+    # ── Shoppings / Imóveis listados ──
+    "MULT3.SA", "IGTI11.SA", "BRPR3.SA", "ALSO3.SA",
+    # ── Transporte / Logística / Aviação / Portos ──
     "RAIL3.SA", "CCRO3.SA", "AZUL4.SA", "GOLL4.SA", "EMBR3.SA",
-    "SIMH3.SA", "VAMO3.SA", "MOVI3.SA", "STBP3.SA", "HBSA3.SA",
-    # ── Papel / Celulose / Florestal ──
-    "SUZB3.SA", "KLBN11.SA", "DTEX3.SA", "RANI3.SA",
-    # ── Agronegócio / Açúcar-Etanol ──
-    "SLCE3.SA", "AGRO3.SA", "SMTO3.SA", "RAIZ4.SA",
+    "SIMH3.SA", "VAMO3.SA", "STBP3.SA", "HBSA3.SA", "LOGG3.SA",
+    "JSLG3.SA", "TGMA3.SA", "TPIS3.SA", "AZEV4.SA", "PSSA3.SA",
     # ── Saúde / Farmacêuticas / Diagnóstico ──
     "RDOR3.SA", "HAPV3.SA", "RADL3.SA", "HYPE3.SA", "FLRY3.SA",
-    "DASA3.SA", "PARD3.SA",
-    # ── Tecnologia / Software ──
-    "TOTS3.SA", "LWSA3.SA", "INTB3.SA", "SQIA3.SA",
-    # ── Veículos / Autopeças ──
-    "POMO4.SA", "MYPK3.SA", "FRAS3.SA",
+    "DASA3.SA", "PARD3.SA", "GNDI3.SA", "BLAU3.SA", "AALR3.SA",
+    "MATD3.SA", "OPCT3.SA",
     # ── Educação ──
-    "YDUQ3.SA", "COGN3.SA", "SEER3.SA",
-    # ── Petroquímica / Química ──
-    "UNIP6.SA", "BRKM5.SA",
+    "YDUQ3.SA", "COGN3.SA", "SEER3.SA", "ANIM3.SA",
+    # ── Veículos / Autopeças ──
+    "POMO4.SA", "POMO3.SA", "MYPK3.SA", "FRAS3.SA", "TUPY3.SA",
+    "RAPT4.SA", "RAPT3.SA",
     # ── Outros ──
-    "WEGE3.SA", "B3SA3.SA", "RENT3.SA", "UGPA3.SA", "TRPL4.SA",
-    "PETZ3.SA", "DXCO3.SA",
+    "WEGE3.SA", "B3SA3.SA", "RENT3.SA", "UGPA3.SA", "PETZ3.SA",
+    "KEPL3.SA", "TASA4.SA", "TASA3.SA", "VLID3.SA", "SHOW3.SA",
+    "SHUL4.SA", "KRSA3.SA", "BRML3.SA",
 ]
 
 
 def fetch_top_stocks():
-    print("\n[6/13] Fetching B3 stocks data...")
+    print("\n[6/14] Fetching B3 stocks data...")
     for ticker in TOP_STOCKS:
         _yf_download(ticker, ticker, STOCKS_DIR)
 
 
-# ─── FIIs (~75 tickers) ───────────────────────────────────────────────────────
+# ─── FIIs — cobertura máxima (~130 tickers) ───────────────────────────────────
 
 FIIS = [
     # ── Logística / Galpões ──
     "HGLG11.SA", "XPLG11.SA", "BRCO11.SA", "LGCP11.SA", "GLOG11.SA",
     "BTLG11.SA", "LVBI11.SA", "VILG11.SA", "PATL11.SA", "XPIN11.SA",
     "RLOG11.SA", "GTLG11.SA", "SDIL11.SA", "GALG11.SA", "LUGG11.SA",
+    "LOGG11.SA", "TRXF11.SA", "WLOG11.SA", "ALZR11.SA",
     # ── Lajes corporativas / Escritórios ──
     "KNRI11.SA", "BRCR11.SA", "RBRP11.SA", "PVBI11.SA", "TGAR11.SA",
-    "ALZR11.SA", "RECT11.SA", "RCRB11.SA", "VINO11.SA", "JSRE11.SA",
+    "RECT11.SA", "RCRB11.SA", "VINO11.SA", "JSRE11.SA", "BROF11.SA",
+    "EDGA11.SA", "ONEF11.SA", "SARE11.SA",
     # ── Shoppings ──
     "XPML11.SA", "VISC11.SA", "HSML11.SA", "MALL11.SA", "HGBS11.SA",
-    "WPLZ11.SA", "FVPQ11.SA",
+    "WPLZ11.SA", "FVPQ11.SA", "JRPT11.SA", "ABCP11.SA",
     # ── Recebíveis / CRI / Papel ──
     "MXRF11.SA", "BCFF11.SA", "HFOF11.SA", "VRTA11.SA", "RBRF11.SA",
     "HGCR11.SA", "CSHG11.SA", "VGIP11.SA", "VGHF11.SA", "KNCR11.SA",
     "KNIP11.SA", "IRDM11.SA", "DEVA11.SA", "CPTS11.SA", "MCCI11.SA",
     "RBHY11.SA", "RBVA11.SA", "XPCI11.SA", "RECR11.SA", "CVBI11.SA",
     "VCRI11.SA", "FEXC11.SA", "RBRR11.SA", "RBRY11.SA", "VGIR11.SA",
-    "SNCI11.SA", "PLRI11.SA",
+    "SNCI11.SA", "PLRI11.SA", "AFCR11.SA", "BCRI11.SA", "BTCR11.SA",
+    "FLCR11.SA", "GCRI11.SA", "HCRI11.SA", "MGCR11.SA", "NCHB11.SA",
+    "NPAR11.SA", "PEBB11.SA", "RBCO11.SA", "RFOF11.SA", "RIET11.SA",
+    "RVBI11.SA", "SADI11.SA", "TFOF11.SA", "URPR11.SA", "VCJR11.SA",
+    "VCRR11.SA", "XPCA11.SA", "XPCM11.SA", "XPCO11.SA",
     # ── Desenvolvimento / Residencial ──
-    "HABT11.SA", "HCTR11.SA",
-    # ── Agro / Rural ──
-    "RURA11.SA", "GGRC11.SA", "RZTR11.SA",
-    # ── Hotelaria / Educacional ──
-    "HGRU11.SA", "XPPR11.SA",
-    # ── Híbridos / Multiestratégia ──
-    "MGFF11.SA", "HGFF11.SA", "BBPO11.SA", "OUJP11.SA",
+    "HABT11.SA", "HCTR11.SA", "HOSI11.SA", "MINT11.SA", "PORD11.SA",
+    # ── Agro / Rural / CRA ──
+    "RURA11.SA", "GGRC11.SA", "RZTR11.SA", "RZAG11.SA",
+    # ── Hotelaria / Educacional / Hospitalar ──
+    "HGRU11.SA", "XPPR11.SA", "HTMX11.SA", "BBPO11.SA",
+    # ── Híbridos / Fundos de fundos / Multiestratégia ──
+    "MGFF11.SA", "HGFF11.SA", "OUJP11.SA", "BCFF11.SA", "HFOF11.SA",
+    "RBRF11.SA", "FIIB11.SA", "MFII11.SA", "KFOF11.SA",
+    # ── Outros segmentos / Mid-small ──
+    "BLMG11.SA", "BOTT11.SA", "CJCT11.SA", "CYCR11.SA", "DVFF11.SA",
+    "FIIP11.SA", "FLFL11.SA", "FOFT11.SA", "HIOF11.SA", "HMOC11.SA",
+    "LASC11.SA", "MMVE11.SA", "NEWL11.SA", "PABY11.SA", "PFIN11.SA",
+    "PNDL11.SA", "RBDS11.SA", "RBRM11.SA", "RBTS11.SA", "RODG11.SA",
+    "RSPD11.SA", "SEQR11.SA", "TPFT11.SA", "TVRI11.SA", "VOTS11.SA",
+    "VVCR11.SA", "VTLT11.SA", "WHGR11.SA", "XPDV11.SA",
 ]
 
 
 def fetch_fiis():
-    print("\n[7/13] Fetching FIIs data...")
-    for ticker in FIIS:
+    print("\n[7/14] Fetching FIIs data...")
+    # Deduplicate while preserving order
+    seen = set()
+    unique_fiis = [t for t in FIIS if not (t in seen or seen.add(t))]
+    for ticker in unique_fiis:
         name = ticker.replace(".SA", "").lower()
         _yf_download(ticker, name, FIIS_DIR)
 
 
-# ─── ETFs B3 (~30 tickers) ───────────────────────────────────────────────────
+# ─── ETFs B3 — cobertura máxima (~50 tickers) ────────────────────────────────
 
 ETFS = {
-    # ── Renda variável Brasil ──
-    "bova11":   "BOVA11.SA",
-    "bovv11":   "BOVV11.SA",
-    "smal11":   "SMAL11.SA",
-    "divo11":   "DIVO11.SA",
-    "brax11":   "BRAX11.SA",
-    "matb11":   "MATB11.SA",
-    "isus11":   "ISUS11.SA",
-    "find11":   "FIND11.SA",
-    "util11":   "UTIL11.SA",
+    # ── Renda variável Brasil — índices amplos ──
+    "bova11":   "BOVA11.SA",   # Ibovespa
+    "bovv11":   "BOVV11.SA",   # Ibovespa (Vanguard variant)
+    "pibb11":   "PIBB11.SA",   # IBrX-50 (iShares, mais antigo)
+    "brax11":   "BRAX11.SA",   # IBrX-100
+    "smal11":   "SMAL11.SA",   # Small Caps
+    "smab11":   "SMAB11.SA",   # Small Cap (variante)
+    # ── Renda variável Brasil — temáticos ──
+    "divo11":   "DIVO11.SA",   # Dividendos (IDIV)
+    "matb11":   "MATB11.SA",   # Materiais básicos (IMAT)
+    "isus11":   "ISUS11.SA",   # Sustentabilidade (ISE)
+    "find11":   "FIND11.SA",   # Financeiro (IFNC)
+    "util11":   "UTIL11.SA",   # Utilidades (IUTIL)
+    "csmo11":   "CSMO11.SA",   # Consumo (ICON)
+    "agri11":   "AGRI11.SA",   # Agronegócio (IAGRO)
+    "infra11":  "INFRA11.SA",  # Infraestrutura
+    "ecoo11":   "ECOO11.SA",   # ESG / Eficiência Carbono
     # ── Renda variável internacional (em BRL) ──
-    "ivvb11":   "IVVB11.SA",
-    "spxi11":   "SPXI11.SA",
-    "nasd11":   "NASD11.SA",
-    "eurp11":   "EURP11.SA",
-    "acwi11":   "ACWI11.SA",
-    "wrld11":   "WRLD11.SA",
-    "esgb11":   "ESGB11.SA",
+    "ivvb11":   "IVVB11.SA",   # S&P 500 sem hedge
+    "spxi11":   "SPXI11.SA",   # S&P 500 com hedge cambial
+    "nasd11":   "NASD11.SA",   # Nasdaq 100
+    "eurp11":   "EURP11.SA",   # Europa (MSCI Europe)
+    "acwi11":   "ACWI11.SA",   # MSCI ACWI (global)
+    "wrld11":   "WRLD11.SA",   # MSCI World
+    "esgb11":   "ESGB11.SA",   # ESG global
+    "chna11":   "CHNA11.SA",   # China (MSCI China)
+    "xina11":   "XINA11.SA",   # China A-shares
+    "spxb11":   "SPXB11.SA",   # S&P 500 ESG
     # ── Renda fixa / Tesouro BR ──
-    "imab11":   "IMAB11.SA",   # IMA-B (NTN-B — IPCA+)
-    "irfm11":   "IRFM11.SA",   # IRF-M (prefixados)
+    "imab11":   "IMAB11.SA",   # IMA-B — NTN-B (IPCA+)
     "b5p211":   "B5P211.SA",   # IMA-B 5+ (NTN-B longas)
+    "irfm11":   "IRFM11.SA",   # IRF-M — prefixados
     "fixa11":   "FIXA11.SA",   # Pré-fixado curto
-    # ── Infraestrutura ──
-    "infra11":  "INFRA11.SA",  # Índice de infraestrutura B3
+    "ntnb11":   "NTNB11.SA",   # NTN-B (variante Itaú)
+    "lbri11":   "LBRI11.SA",   # IMA-Geral (todas maturidades)
+    "usdb11":   "USDB11.SA",   # IMA-S — pós-fixado (LFT/SELIC)
+    "gove11":   "GOVE11.SA",   # Tesouro Pré-fixado (short duration)
+    # ── Debêntures / Crédito ──
+    "debn11":   "DEBN11.SA",   # Debêntures incentivadas
+    "debb11":   "DEBB11.SA",   # Debêntures corporativas
+    "fiit11":   "FIIT11.SA",   # FII (fundo de FIIs)
     # ── Commodities / Cripto / Alternativos ──
-    "gold11":   "GOLD11.SA",
-    "hash11":   "HASH11.SA",
-    "comc11":   "COMC11.SA",
-    # ── Debentures ──
-    "debn11":   "DEBN11.SA",   # ETF de debêntures incentivadas
-    "debb11":   "DEBB11.SA",   # ETF de debêntures corporativas
+    "gold11":   "GOLD11.SA",   # Ouro físico (BRL)
+    "hash11":   "HASH11.SA",   # Criptoativos diversificados
+    "comc11":   "COMC11.SA",   # Commodities (índice)
+    "defi11":   "DEFI11.SA",   # DeFi/Cripto
+    "bith11":   "BITH11.SA",   # Bitcoin (variante)
 }
 
 
 def fetch_etfs():
-    print("\n[8/13] Fetching B3 ETFs data...")
+    print("\n[8/14] Fetching B3 ETFs data...")
     for name, ticker in ETFS.items():
         _yf_download(ticker, name, ETFS_DIR)
 
 
-# ─── BDRs (~40 tickers) ──────────────────────────────────────────────────────
+# ─── BDRs — cobertura máxima (~90 tickers) ───────────────────────────────────
 
 BDRS = {
-    # ── Tecnologia ──
-    "aapl34":  "AAPL34.SA",
-    "msft34":  "MSFT34.SA",
-    "amzo34":  "AMZO34.SA",
-    "gogl34":  "GOGL34.SA",
-    "meta34":  "META34.SA",
-    "nvdc34":  "NVDC34.SA",
-    "tsla34":  "TSLA34.SA",
-    "nflx34":  "NFLX34.SA",
-    "uber34":  "UBER34.SA",
-    "spot34":  "SPOT34.SA",
+    # ── Big Tech / FAANG+ ──
+    "aapl34":   "AAPL34.SA",   # Apple
+    "msft34":   "MSFT34.SA",   # Microsoft
+    "amzo34":   "AMZO34.SA",   # Amazon
+    "gogl34":   "GOGL34.SA",   # Alphabet (Google)
+    "meta34":   "META34.SA",   # Meta (Facebook)
+    "nvdc34":   "NVDC34.SA",   # NVIDIA
+    "tsla34":   "TSLA34.SA",   # Tesla
+    "nflx34":   "NFLX34.SA",   # Netflix
+    "uber34":   "UBER34.SA",   # Uber
+    "spot34":   "SPOT34.SA",   # Spotify
+    "adbe34":   "ADBE34.SA",   # Adobe
+    "crm34":    "CRM34.SA",    # Salesforce
+    "intu34":   "INTU34.SA",   # Intuit
+    "pypl34":   "PYPL34.SA",   # PayPal
+    "sq34":     "SQ34.SA",     # Block (Square)
+    "meli34":   "MELI34.SA",   # MercadoLibre (maior EM tech LatAm)
+    "shop32":   "SHOP32.SA",   # Shopify
     # ── Semicondutores / Hardware ──
-    "itlc34":  "ITLC34.SA",
-    "csco34":  "CSCO34.SA",
-    "orcl34":  "ORCL34.SA",
-    "ibmb34":  "IBMB34.SA",
-    "qual34":  "QUAL34.SA",
-    # ── Financeiro ──
-    "jpmc34":  "JPMC34.SA",
-    "berk34":  "BERK34.SA",
-    "boac34":  "BOAC34.SA",
-    "gsgi34":  "GSGI34.SA",
-    "msbr34":  "MSBR34.SA",
-    "wfco34":  "WFCO34.SA",
-    "visa34":  "VISA34.SA",
-    "mast34":  "MAST34.SA",
+    "itlc34":   "ITLC34.SA",   # Intel
+    "csco34":   "CSCO34.SA",   # Cisco
+    "orcl34":   "ORCL34.SA",   # Oracle
+    "ibmb34":   "IBMB34.SA",   # IBM
+    "qual34":   "QUAL34.SA",   # Qualcomm
+    "txn34":    "TXN34.SA",    # Texas Instruments
+    "amd34":    "AMD34.SA",    # AMD
+    # ── Financeiro / Bancos ──
+    "jpmc34":   "JPMC34.SA",   # JPMorgan Chase
+    "berk34":   "BERK34.SA",   # Berkshire Hathaway
+    "boac34":   "BOAC34.SA",   # Bank of America
+    "gsgi34":   "GSGI34.SA",   # Goldman Sachs
+    "msbr34":   "MSBR34.SA",   # Morgan Stanley
+    "wfco34":   "WFCO34.SA",   # Wells Fargo
+    "c34":      "C34.SA",      # Citigroup
+    "axp34":    "AXP34.SA",    # American Express
+    "visa34":   "VISA34.SA",   # Visa
+    "mast34":   "MAST34.SA",   # Mastercard
+    "pru34":    "PRU34.SA",    # Prudential Financial
     # ── Saúde / Farma ──
-    "jnjb34":  "JNJB34.SA",
-    "pfiz34":  "PFIZ34.SA",
-    "abtt34":  "ABTT34.SA",
-    "mrck34":  "MRCK34.SA",
-    "lily34":  "LILY34.SA",
-    # ── Consumo ──
-    "kofc34":  "KOFC34.SA",
-    "pepb34":  "PEPB34.SA",
-    "mcdc34":  "MCDC34.SA",
-    "nike34":  "NIKE34.SA",
-    "disb34":  "DISB34.SA",
-    # ── Energia ──
-    "xomc34":  "XOMC34.SA",
-    "chev34":  "CHEV34.SA",
-    "shel34":  "SHEL34.SA",
-    "toit34":  "TOIT34.SA",
+    "jnjb34":   "JNJB34.SA",   # Johnson & Johnson
+    "pfiz34":   "PFIZ34.SA",   # Pfizer
+    "abtt34":   "ABTT34.SA",   # Abbott
+    "mrck34":   "MRCK34.SA",   # Merck
+    "lily34":   "LILY34.SA",   # Eli Lilly
+    "unh34":    "UNH34.SA",    # UnitedHealth
+    "abbv34":   "ABBV34.SA",   # AbbVie
+    "bmy34":    "BMY34.SA",    # Bristol-Myers Squibb
+    "amgn34":   "AMGN34.SA",   # Amgen
+    "nvo34":    "NVO34.SA",    # Novo Nordisk
+    # ── Consumo / Varejo ──
+    "kofc34":   "KOFC34.SA",   # Coca-Cola
+    "pepb34":   "PEPB34.SA",   # PepsiCo
+    "mcdc34":   "MCDC34.SA",   # McDonald's
+    "nike34":   "NIKE34.SA",   # Nike
+    "disb34":   "DISB34.SA",   # Disney
+    "wmt34":    "WMT34.SA",    # Walmart
+    "tgt34":    "TGT34.SA",    # Target
+    "hd34":     "HD34.SA",     # Home Depot
+    "low34":    "LOW34.SA",    # Lowe's
+    "sbux34":   "SBUX34.SA",   # Starbucks
+    "pg34":     "PG34.SA",     # Procter & Gamble
+    "cl34":     "CL34.SA",     # Colgate-Palmolive
+    # ── Industrial / Aerospace / Defesa ──
+    "ba34":     "BA34.SA",     # Boeing
+    "ge34":     "GE34.SA",     # GE Aerospace
+    "mmm34":    "MMM34.SA",    # 3M
+    "hon34":    "HON34.SA",    # Honeywell
+    "cat34":    "CAT34.SA",    # Caterpillar
+    "de34":     "DE34.SA",     # Deere & Co
+    "ups34":    "UPS34.SA",    # UPS
+    "fdx34":    "FDX34.SA",    # FedEx
+    # ── Energia / Petróleo ──
+    "xomc34":   "XOMC34.SA",   # ExxonMobil
+    "chev34":   "CHEV34.SA",   # Chevron
+    "shel34":   "SHEL34.SA",   # Shell
+    "toit34":   "TOIT34.SA",   # TotalEnergies
+    "bp34":     "BP34.SA",     # BP
+    "slb34":    "SLB34.SA",    # SLB (Schlumberger)
+    # ── Mineração / Metais (influência direta na B3) ──
+    "bhpb34":   "BHPB34.SA",   # BHP Billiton BDR
+    "riot34":   "RIOT34.SA",   # Rio Tinto BDR
     # ── Ásia ──
-    "baba34":  "BABA34.SA",
-    "tsmc34":  "TSMC34.SA",
-    "sams34":  "SAMS34.SA",
+    "baba34":   "BABA34.SA",   # Alibaba
+    "tsmc34":   "TSMC34.SA",   # TSMC
+    "sams34":   "SAMS34.SA",   # Samsung
+    # ── Telecom / Streaming ──
+    "t34":      "T34.SA",      # AT&T
+    "vz34":     "VZ34.SA",     # Verizon
 }
 
 
 def fetch_bdrs():
-    print("\n[9/13] Fetching BDRs data...")
+    print("\n[9/14] Fetching BDRs data...")
     for name, ticker in BDRS.items():
         _yf_download(ticker, name, BDRS_DIR)
 
@@ -552,8 +683,9 @@ COMMODITIES = {
     "brent":          "BZ=F",
     "wti":            "CL=F",
     "nat_gas":        "NG=F",
-    "ethanol":        "EH=F",     # Etanol — Brasil maior exportador
+    "ethanol":        "EH=F",
     "heating_oil":    "HO=F",
+    "rbob_gasoline":  "RB=F",
     # ── Metais ──
     "gold":           "GC=F",
     "silver":         "SI=F",
@@ -561,6 +693,8 @@ COMMODITIES = {
     "aluminum":       "ALI=F",
     "platinum":       "PL=F",
     "palladium":      "PA=F",
+    "nickel":         "NI=F",
+    "zinc":           "ZNC=F",
     # ── Agrícolas — Brasil líder mundial ──
     "soybeans":       "ZS=F",
     "soybean_oil":    "ZL=F",
@@ -572,6 +706,7 @@ COMMODITIES = {
     "cotton":         "CT=F",
     "orange_juice":   "OJ=F",
     "cocoa":          "CC=F",
+    "rice":           "ZR=F",
     # ── Pecuária ──
     "live_cattle":    "LE=F",
     "feeder_cattle":  "GF=F",
@@ -582,165 +717,240 @@ COMMODITIES = {
 
 
 def fetch_commodities():
-    print("\n[10/13] Fetching commodities data...")
+    print("\n[10/14] Fetching commodities data...")
     for name, ticker in COMMODITIES.items():
         _yf_download(ticker, name, COMMODITIES_DIR)
 
 
-# ─── Bonds / Fixed Income ETFs (baixa correlação com ações) ─────────────────
-# Esses ETFs têm correlação historicamente negativa ou baixa com renda variável,
-# funcionando como hedge em períodos de risco (risk-off).
+# ─── Global Macro — variáveis externas que influenciam a B3 ──────────────────
+# Esta categoria captura TODOS os drivers externos da B3:
+#   - China (maior parceiro, VALE = 15%+ do IBOV)
+#   - Minério de ferro / aço (VALE, CSN, Gerdau, Usiminas)
+#   - Curva de juros EUA (custo de capital, carry trade BRL)
+#   - Crédito / risco EM (fluxo de capital estrangeiro p/ B3)
+#   - LatAm peers (contágio de sentimento regional)
+#   - Agro global (ADRs de processadores/traders de commodities)
+#   - Volatilidades específicas (petróleo, ouro, câmbio)
+
+GLOBAL_MACRO = {
+    # ── China — drives VALE, minério, aço, soja ──
+    "fxi":          "FXI",       # iShares China Large-Cap
+    "mchi":         "MCHI",      # iShares MSCI China
+    "kweb":         "KWEB",      # KraneShares China Internet (tech chinesa)
+    "ashr":         "ASHR",      # Deutsche X-trackers CSI 300 (A-shares)
+    "cnya":         "CNYA",      # iShares MSCI China A (onshore)
+    # ── Iron ore / Mineração — VALE é ~15% do IBOV ──
+    "vale_adr":     "VALE",      # Vale S.A. ADR (NYSE) — mesma empresa em USD
+    "rio_tinto":    "RIO",       # Rio Tinto ADR — define price discovery de minério
+    "bhp":          "BHP",       # BHP ADR — maior mineradora, produtora de minério
+    "pick":         "PICK",      # iShares Diversified Mining ETF
+    "xme":          "XME",       # SPDR S&P Metals & Mining ETF
+    # ── Aço — CSN, Gerdau, Usiminas ──
+    "slx":          "SLX",       # VanEck Steel ETF
+    "mt":           "MT",        # ArcelorMittal ADR
+    "stld":         "STLD",      # Steel Dynamics (benchmark aço EUA)
+    # ── Petróleo — PETR3/PETR4 = ~10% do IBOV ──
+    "pbr":          "PBR",       # Petrobras ADR ON (NYSE)
+    "pbr_a":        "PBR-A",     # Petrobras ADR PN (NYSE)
+    "oih":          "OIH",       # VanEck Oil Services ETF
+    "xle":          "XLE",       # SPDR Energy Select Sector
+    # ── América Latina — contágio de sentimento regional ──
+    "ilf":          "ILF",       # iShares Latin America 40
+    "eww":          "EWW",       # iShares MSCI Mexico
+    "gxg":          "GXG",       # iShares MSCI Colombia
+    "ech":          "ECH",       # iShares MSCI Chile
+    "epu":          "EPU",       # iShares MSCI Peru
+    "argt":         "ARGT",      # Global X MSCI Argentina
+    "ewz":          "EWZ",       # iShares MSCI Brazil (Brasil em USD)
+    # ── Mercados emergentes — fluxo de capital para/de B3 ──
+    "eem":          "EEM",       # iShares MSCI EM
+    "vwo":          "VWO",       # Vanguard FTSE EM
+    "emhy":         "EMHY",      # iShares EM High Yield
+    "emb":          "EMB",       # iShares EM Bonds USD
+    "cew":          "CEW",       # WisdomTree EM Currency ETF
+    # ── Curva de juros EUA — carry trade BRL, custo de capital ──
+    "tnx":          "^TNX",      # US 10y Treasury yield
+    "tyx":          "^TYX",      # US 30y Treasury yield
+    "fvx":          "^FVX",      # US 5y Treasury yield
+    "irx":          "^IRX",      # US 3-month T-bill
+    "shy":          "SHY",       # 1-3yr Treasury (proxy Fed rate)
+    # ── Crédito EUA — apetite por risco global ──
+    "hyg":          "HYG",       # High Yield (risco-on/off)
+    "lqd":          "LQD",       # Investment Grade
+    # ── Crescimento global / Ciclo econômico ──
+    "vt":           "VT",        # Vanguard Total World Stock
+    "acwi":         "ACWI",      # iShares MSCI ACWI
+    "xlf":          "XLF",       # SPDR Financials (stress bancário)
+    "xly":          "XLY",       # SPDR Consumer Discretionary
+    # ── Agro global — traders/processadores de soja, milho, café ──
+    "adm":          "ADM",       # Archer-Daniels-Midland (soja, milho)
+    "bunge":        "BG",        # Bunge Limited (maior trader de soja)
+    "cargill_proxy":"CF",        # CF Industries (fertilizantes)
+    "mosaic":       "MOS",       # Mosaic (potássio/fosfato — insumos agro)
+    # ── Celulose / Papel — Suzano é maior do mundo ──
+    "intl_paper":   "IP",        # International Paper
+    "weyerhaeuser": "WY",        # Weyerhaeuser (florestal EUA)
+    # ── Bancos brasileiros ADR ──
+    "itub_adr":     "ITUB",      # Itaú ADR (NYSE)
+    "bbd":          "BBD",       # Bradesco ADR (NYSE)
+    # ── Aviação — Azul, Gol (ciclo econômico BR) ──
+    "jets":         "JETS",      # US Global Jets ETF (cias aéreas global)
+    # ── Volatilidades específicas (risco em ativos-chave da B3) ──
+    "vix":          "^VIX",      # Volatilidade S&P 500
+    "ovx":          "^OVX",      # Volatilidade do petróleo
+    "gvz":          "^GVZ",      # Volatilidade do ouro
+    # ── Frete / Comércio global ──
+    "dbc":          "DBC",       # Invesco Commodities (índice amplo)
+    "gsg":          "GSG",       # iShares GSCI Commodity Index
+}
+
+
+def fetch_global_macro():
+    print("\n[11/14] Fetching global macro drivers of B3...")
+    for name, ticker in GLOBAL_MACRO.items():
+        _yf_download(ticker, name, GLOBAL_MACRO_DIR)
+
+
+# ─── Bonds / Fixed Income ETFs ───────────────────────────────────────────────
 
 BONDS_ETFS = {
-    # ── Treasuries EUA (correlação negativa c/ ações em crises) ──
-    "shy":    "SHY",     # iShares 1-3yr Treasury Bond
-    "ief":    "IEF",     # iShares 7-10yr Treasury Bond
-    "tlt":    "TLT",     # iShares 20+ Year Treasury Bond
-    "tyx":    "^TYX",    # 30-year yield (série de referência)
-    "govt":   "GOVT",    # iShares US Treasury Bond (toda a curva)
-    # ── TIPS — proteção contra inflação ──
-    "tip":    "TIP",     # iShares TIPS Bond (inflation-linked EUA)
-    "stip":   "STIP",    # iShares Short-Term TIPS
+    # ── Treasuries EUA ──
+    "shy":    "SHY",
+    "ief":    "IEF",
+    "tlt":    "TLT",
+    "govt":   "GOVT",
+    # ── TIPS — proteção inflação ──
+    "tip":    "TIP",
+    "stip":   "STIP",
     # ── Crédito investment grade ──
-    "lqd":    "LQD",     # iShares IG Corporate Bond
-    "vcit":   "VCIT",    # Vanguard Intermediate-Term Corp
-    "vclt":   "VCLT",    # Vanguard Long-Term Corp
-    # ── High yield (correlação maior c/ ações, mas diversifica) ──
-    "hyg":    "HYG",     # iShares High Yield Corporate Bond
-    "jnk":    "JNK",     # SPDR Bloomberg High Yield
-    # ── Bonds de mercados emergentes ──
-    "emb":    "EMB",     # iShares JP Morgan EM Bond (USD)
-    "lemb":   "LEMB",    # iShares EM Local Currency Bond
+    "lqd":    "LQD",
+    "vcit":   "VCIT",
+    "vclt":   "VCLT",
+    # ── High yield ──
+    "hyg":    "HYG",
+    "jnk":    "JNK",
+    # ── Bonds EM ──
+    "emb":    "EMB",
+    "lemb":   "LEMB",
     # ── Bonds globais ──
-    "bndx":   "BNDX",    # Vanguard Total International Bond
-    "iagg":   "IAGG",    # iShares International Aggregate Bond
-    # ── Bonds conversíveis / alternativos ──
-    "icvt":   "ICVT",    # iShares Convertible Bond
-    "bkln":   "BKLN",    # Invesco Senior Loan (floating rate)
-    # ── Tesouro Brasil (já coberto em ETFs B3, repetido aqui p/ referência) ──
+    "bndx":   "BNDX",
+    "iagg":   "IAGG",
+    # ── Alternativos ──
+    "icvt":   "ICVT",
+    "bkln":   "BKLN",
+    # ── BR reference ──
     "imab11_ref":  "IMAB11.SA",
     "irfm11_ref":  "IRFM11.SA",
 }
 
 
 def fetch_bonds():
-    print("\n[11/13] Fetching bonds / fixed-income ETFs (low equity correlation)...")
+    print("\n[12/14] Fetching bonds / fixed-income ETFs...")
     for name, ticker in BONDS_ETFS.items():
         _yf_download(ticker, name, BONDS_DIR)
 
 
-# ─── Real Assets ETFs (baixa correlação / proteção real) ────────────────────
-# Ativos reais têm correlação historicamente baixa com ações e funcionam como
-# proteção contra inflação: imóveis, infraestrutura, madeira, água, agro.
+# ─── Real Assets ETFs ────────────────────────────────────────────────────────
 
 REAL_ASSETS_ETFS = {
     # ── REITs EUA ──
-    "vnq":    "VNQ",     # Vanguard Real Estate (REITs EUA)
-    "iyr":    "IYR",     # iShares US Real Estate
-    "rem":    "REM",     # iShares Mortgage REIT
-    "schh":   "SCHH",    # Schwab US REIT
-    # ── REITs internacionais ──
-    "reet":   "REET",    # iShares Global REIT
-    "ifgl":   "IFGL",    # iShares International Developed Real Estate
+    "vnq":    "VNQ",
+    "iyr":    "IYR",
+    "rem":    "REM",
+    "schh":   "SCHH",
+    # ── REITs Internacional ──
+    "reet":   "REET",
+    "ifgl":   "IFGL",
     # ── Infraestrutura ──
-    "ifra":   "IFRA",    # iShares US Infrastructure
-    "pave":   "PAVE",    # Global X US Infrastructure Development
-    "igf":    "IGF",     # iShares Global Infrastructure
-    "toll":   "TOLL",    # iShares US Transportation Infrastructure
-    # ── Madeira / Florestal ──
-    "wood":   "WOOD",    # iShares Global Timber & Forestry
-    "cut":    "CUT",     # Invesco MSCI Global Timber ETF
+    "ifra":   "IFRA",
+    "pave":   "PAVE",
+    "igf":    "IGF",
+    # ── Madeira ──
+    "wood":   "WOOD",
+    "cut":    "CUT",
     # ── Água ──
-    "pho":    "PHO",     # Invesco Water Resources
-    "fiw":    "FIW",     # First Trust Water ETF
-    "cgw":    "CGW",     # Invesco S&P Global Water
-    # ── Agricultura / Farmland ──
-    "dba":    "DBA",     # Invesco DB Agriculture Fund
-    "soyb":   "SOYB",    # Teucrium Soybean
-    "corn_et":"CORN",    # Teucrium Corn
-    "cane":   "CANE",    # Teucrium Sugar Cane
-    "jo":     "JO",      # iPath Bloomberg Coffee Subindex
-    # ── Ouro / Metais preciosos físicos ──
-    "gld":    "GLD",     # SPDR Gold Shares (ouro físico)
-    "iau":    "IAU",     # iShares Gold Trust
-    "gdx":    "GDX",     # VanEck Gold Miners
-    "gdxj":   "GDXJ",    # VanEck Junior Gold Miners
-    "slv":    "SLV",     # iShares Silver Trust
-    "pplt":   "PPLT",    # abrdn Physical Platinum
+    "pho":    "PHO",
+    "fiw":    "FIW",
+    "cgw":    "CGW",
+    # ── Agricultura ──
+    "dba":    "DBA",
+    "soyb":   "SOYB",
+    "corn_et": "CORN",
+    "cane":   "CANE",
+    "jo":     "JO",
+    # ── Metais preciosos físicos ──
+    "gld":    "GLD",
+    "iau":    "IAU",
+    "gdx":    "GDX",
+    "gdxj":   "GDXJ",
+    "slv":    "SLV",
+    "pplt":   "PPLT",
     # ── Energia real ──
-    "uso":    "USO",     # United States Oil Fund
-    "ung":    "UNG",     # United States Natural Gas Fund
-    "mlp":    "AMLP",    # Alerian MLP ETF (midstream/pipeline)
+    "uso":    "USO",
+    "ung":    "UNG",
+    "mlp":    "AMLP",
 }
 
 
 def fetch_real_assets():
-    print("\n[12/13] Fetching real assets ETFs (low equity correlation)...")
+    print("\n[13/14] Fetching real assets ETFs (low equity correlation)...")
     for name, ticker in REAL_ASSETS_ETFS.items():
         _yf_download(ticker, name, REAL_ASSETS_DIR)
 
 
-# ─── Alternative / Thematic ETFs (diversificação e baixa correlação) ────────
-# Inclui: volatilidade (hedge), energia limpa, defesa, mercados emergentes,
-# fatores (low-vol, momentum, quality, value) e estratégias temáticas.
+# ─── Alternative / Thematic ETFs ─────────────────────────────────────────────
 
 ALTERNATIVES_ETFS = {
-    # ── Volatilidade — correlação negativa com ações ──
-    "uvxy":   "UVXY",    # ProShares Ultra VIX Short-Term Futures (long vol)
-    "svxy":   "SVXY",    # ProShares Short VIX (short vol)
-    "vixm":   "VIXM",    # ProShares VIX Mid-Term Futures
-    # ── Setores defensivos (baixa correlação em ciclos de queda) ──
-    "xlv":    "XLV",     # SPDR Healthcare
-    "xlu":    "XLU",     # SPDR Utilities
-    "xlp":    "XLP",     # SPDR Consumer Staples
-    "xli":    "XLI",     # SPDR Industrials
-    "xlb":    "XLB",     # SPDR Materials
-    # ── Energia limpa / Renovável ──
-    "icln":   "ICLN",    # iShares Global Clean Energy
-    "tan":    "TAN",     # Invesco Solar Energy
-    "fan":    "FAN",     # First Trust Global Wind Energy
-    "ura":    "URA",     # Global X Uranium/Nuclear
-    "qcln":   "QCLN",    # First Trust NASDAQ Clean Edge Green Energy
-    # ── Defesa / Aeroespacial ──
-    "ita":    "ITA",     # iShares US Aerospace & Defense
-    "xar":    "XAR",     # SPDR S&P Aerospace & Defense
+    # ── Volatilidade ──
+    "uvxy":   "UVXY",
+    "svxy":   "SVXY",
+    "vixm":   "VIXM",
+    # ── Setores defensivos ──
+    "xlv":    "XLV",
+    "xlu":    "XLU",
+    "xlp":    "XLP",
+    "xli":    "XLI",
+    "xlb":    "XLB",
+    # ── Energia limpa ──
+    "icln":   "ICLN",
+    "tan":    "TAN",
+    "fan":    "FAN",
+    "ura":    "URA",
+    "qcln":   "QCLN",
+    # ── Defesa ──
+    "ita":    "ITA",
+    "xar":    "XAR",
     # ── Mercados emergentes ──
-    "eem":    "EEM",     # iShares MSCI Emerging Markets
-    "vwo":    "VWO",     # Vanguard FTSE Emerging Markets
-    "fm":     "FM",      # iShares MSCI Frontier Markets
-    "ewz":    "EWZ",     # iShares MSCI Brazil (Brasil em USD)
-    "ewy":    "EWY",     # iShares MSCI South Korea
-    "inda":   "INDA",    # iShares MSCI India
-    "mchi":   "MCHI",    # iShares MSCI China
-    "eww":    "EWW",     # iShares MSCI Mexico
+    "fm":     "FM",
+    "ewy":    "EWY",
+    "inda":   "INDA",
+    "mchi":   "MCHI",
     # ── Fatores / Smart Beta ──
-    "usmv":   "USMV",    # iShares MSCI Min Volatility (baixa volatilidade)
-    "qual":   "QUAL",    # iShares MSCI Quality Factor
-    "mtum":   "MTUM",    # iShares MSCI Momentum Factor
-    "vlue":   "VLUE",    # iShares MSCI Value Factor
-    "size":   "SIZE",    # iShares MSCI Size Factor
-    # ── Dividendos (renda estável) ──
-    "vym":    "VYM",     # Vanguard High Dividend Yield
-    "schd":   "SCHD",    # Schwab US Dividend Equity
-    "hdv":    "HDV",     # iShares High Dividend Equity
-    # ── Tecnologia emergente ──
-    "arkk":   "ARKK",    # ARK Innovation ETF
-    "arkg":   "ARKG",    # ARK Genomic Revolution
-    "lit":    "LIT",     # Global X Lithium & Battery Tech
-    "hack":   "HACK",    # ETFMG Prime Cyber Security
-    "robo":   "ROBO",    # ROBO Global Robotics and Automation
-    "botz":   "BOTZ",    # Global X Robotics & Artificial Intelligence
-    # ── Índices de commodities (diversificação real) ──
-    "gsg":    "GSG",     # iShares S&P GSCI Commodity-Indexed
-    "pdbc":   "PDBC",    # Invesco Optimum Yield Diversified Commodity
-    # ── Outros ──
-    "tip2":   "RINF",    # ProShares Inflation Expectations
-    "cpi":    "CPI",     # iShares TIPS Bond (curto prazo)
+    "usmv":   "USMV",
+    "qual":   "QUAL",
+    "mtum":   "MTUM",
+    "vlue":   "VLUE",
+    "size":   "SIZE",
+    # ── Dividendos ──
+    "vym":    "VYM",
+    "schd":   "SCHD",
+    "hdv":    "HDV",
+    # ── Tecnologia disruptiva ──
+    "arkk":   "ARKK",
+    "arkg":   "ARKG",
+    "lit":    "LIT",
+    "hack":   "HACK",
+    "robo":   "ROBO",
+    "botz":   "BOTZ",
+    # ── Índices de commodities ──
+    "pdbc":   "PDBC",
+    # ── Inflação ──
+    "rinf":   "RINF",
 }
 
 
 def fetch_alternatives():
-    print("\n[13/13] Fetching alternative/thematic ETFs (diversification)...")
+    print("\n[14/14] Fetching alternative/thematic ETFs...")
     for name, ticker in ALTERNATIVES_ETFS.items():
         _yf_download(ticker, name, ALTERNATIVES_DIR)
 
@@ -749,22 +959,22 @@ def fetch_alternatives():
 
 def main():
     ensure_dirs()
-    fetch_macro_data()        # [1/13] BCB macro + PTAX
-    fetch_fixed_income_data() # [2/13] BCB renda fixa + crédito
-    fetch_sectoral_data()     # [3/13] BCB setorial + atividade
-    fetch_currency_data()     # [4/13] BRL FX + crypto
-    fetch_equity_indices()    # [5/13] Índices B3 + referências globais
-    fetch_top_stocks()        # [6/13] ~130 ações B3
-    fetch_fiis()              # [7/13] ~75 FIIs
-    fetch_etfs()              # [8/13] ~30 ETFs B3
-    fetch_bdrs()              # [9/13] ~40 BDRs
-    fetch_commodities()       # [10/13] Commodities
-    fetch_bonds()             # [11/13] Bonds ETFs (baixa correlação c/ ações)
-    fetch_real_assets()       # [12/13] Real assets (infra, madeira, água, agro)
-    fetch_alternatives()      # [13/13] Temáticos, fatores, volatilidade, EM
+    fetch_macro_data()        # [ 1/14] BCB macro + PTAX (65+ series)
+    fetch_fixed_income_data() # [ 2/14] BCB renda fixa + crédito (23+ series)
+    fetch_sectoral_data()     # [ 3/14] BCB setorial + atividade (15 series)
+    fetch_currency_data()     # [ 4/14] BRL FX (15 pares) + cripto (14)
+    fetch_equity_indices()    # [ 5/14] Índices B3 + globais (30)
+    fetch_top_stocks()        # [ 6/14] ~290 ações B3
+    fetch_fiis()              # [ 7/14] ~130 FIIs
+    fetch_etfs()              # [ 8/14] ~50 ETFs B3
+    fetch_bdrs()              # [ 9/14] ~90 BDRs
+    fetch_commodities()       # [10/14] ~30 futuros de commodities
+    fetch_global_macro()      # [11/14] ~55 drivers externos da B3
+    fetch_bonds()             # [12/14] ~20 bond ETFs (baixa corr.)
+    fetch_real_assets()       # [13/14] ~29 real asset ETFs
+    fetch_alternatives()      # [14/14] ~36 temáticos / fatores
     print("\n[collector] All data collection complete.")
 
 
 if __name__ == "__main__":
     main()
-
