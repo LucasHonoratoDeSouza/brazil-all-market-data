@@ -31,10 +31,14 @@ Directories created under data/:
 import os
 import time
 from datetime import datetime, timedelta
+from typing import Optional
 
 import pandas as pd
 import yfinance as yf
 from bcb import sgs
+
+# Full history start date used when no local CSV exists yet
+_FULL_HISTORY_START = "2000-01-01"
 
 # ─── Directory layout ─────────────────────────────────────────────────────────
 
@@ -69,41 +73,100 @@ def ensure_dirs():
         os.makedirs(d, exist_ok=True)
 
 
+# ─── Incremental helpers ──────────────────────────────────────────────────────
+
+def _last_csv_date(csv_path: str) -> Optional[str]:
+    """Return the latest date index in an existing CSV as YYYY-MM-DD, or None."""
+    if not os.path.exists(csv_path):
+        return None
+    try:
+        # Read only the index column (col 0).  Works for both single-header (BCB)
+        # and two-header (yfinance) CSVs because non-date rows parse to NaT.
+        raw = pd.read_csv(csv_path, index_col=0, header=0, low_memory=False)
+        idx = pd.to_datetime(raw.index, errors="coerce").dropna()
+        if idx.empty:
+            return None
+        return idx.max().strftime("%Y-%m-%d")
+    except Exception:
+        return None
+
+
+def _resume_start(csv_path: str, full_start: str) -> tuple[str, bool]:
+    """
+    Return (effective_start_date, is_incremental).
+
+    If the CSV already exists and has data, returns (day_after_last_row, True).
+    Otherwise returns (full_start, False).
+    """
+    last = _last_csv_date(csv_path)
+    if last is None:
+        return full_start, False
+    next_day = datetime.strptime(last, "%Y-%m-%d") + timedelta(days=1)
+    today = datetime.now(tz=None).replace(hour=0, minute=0, second=0, microsecond=0)
+    if next_day >= today:
+        return "", True  # empty string signals "already up to date"
+    return next_day.strftime("%Y-%m-%d"), True
+
+
 # ─── BCB / SGS helpers ────────────────────────────────────────────────────────
 
-def _fetch_bcb(code: int, name: str, target_dir: str, start_date: str = "2000-01-01") -> None:
-    """Download one BCB/SGS series and save as CSV."""
-    print(f"  BCB [{code}] {name}...")
-    try:
-        df = sgs.get(code, start=start_date)
-        df.to_csv(os.path.join(target_dir, f"{name}.csv"))
-        print(f"    -> saved ({len(df)} rows)")
-    except Exception as e:
-        err = str(e)
-        if "10 anos" in err or "period" in err.lower():
-            print(f"    10-year limit hit, chunking...")
-            all_chunks = []
-            cur = datetime.strptime(start_date, "%Y-%m-%d")
-            end_limit = datetime.now()
-            while cur < end_limit:
-                chunk_end = min(cur + timedelta(days=365 * 10 - 1), end_limit)
-                try:
-                    chunk = sgs.get(code, start=cur, end=chunk_end)
-                    if not chunk.empty:
-                        all_chunks.append(chunk)
-                except Exception as ce:
-                    print(f"    chunk error: {ce}")
-                cur = chunk_end + timedelta(days=1)
-                time.sleep(0.5)
-            if all_chunks:
-                final = pd.concat(all_chunks)
-                final = final[~final.index.duplicated(keep="first")]
-                final.to_csv(os.path.join(target_dir, f"{name}.csv"))
-                print(f"    -> saved chunked ({len(final)} rows)")
-            else:
-                print(f"    no data retrieved")
-        else:
+def _fetch_bcb(code: int, name: str, target_dir: str, start_date: str = _FULL_HISTORY_START) -> None:
+    """Download one BCB/SGS series (incrementally if CSV exists) and save as CSV."""
+    csv_path = os.path.join(target_dir, f"{name}.csv")
+    effective_start, is_incremental = _resume_start(csv_path, start_date)
+
+    if is_incremental and effective_start == "":
+        last = _last_csv_date(csv_path)
+        print(f"  BCB [{code}] {name} — up to date ({last})")
+        return
+
+    print(f"  BCB [{code}] {name}... (from {effective_start})")
+
+    def _do_fetch(start: str) -> Optional[pd.DataFrame]:
+        try:
+            return sgs.get(code, start=start)
+        except Exception as e:
+            err = str(e)
+            if "10 anos" in err or "period" in err.lower():
+                print(f"    10-year limit hit, chunking...")
+                chunks = []
+                cur = datetime.strptime(start, "%Y-%m-%d")
+                end_limit = datetime.now()
+                while cur < end_limit:
+                    chunk_end = min(cur + timedelta(days=365 * 10 - 1), end_limit)
+                    try:
+                        chunk = sgs.get(code, start=cur, end=chunk_end)
+                        if not chunk.empty:
+                            chunks.append(chunk)
+                    except Exception as ce:
+                        print(f"    chunk error: {ce}")
+                    cur = chunk_end + timedelta(days=1)
+                    time.sleep(0.5)
+                if chunks:
+                    merged = pd.concat(chunks)
+                    return merged[~merged.index.duplicated(keep="first")]
+                return None
             print(f"    error: {e}")
+            return None
+
+    new_df = _do_fetch(effective_start)
+    if new_df is None or new_df.empty:
+        print(f"    no new data")
+        return
+
+    if is_incremental:
+        try:
+            existing = pd.read_csv(csv_path, index_col=0, parse_dates=True)
+            combined = pd.concat([existing, new_df])
+            combined = combined[~combined.index.duplicated(keep="last")].sort_index()
+            combined.to_csv(csv_path)
+            print(f"    -> appended {len(new_df)} rows (total: {len(combined)})")
+            return
+        except Exception as e:
+            print(f"    append error, overwriting: {e}")
+
+    new_df.to_csv(csv_path)
+    print(f"    -> saved ({len(new_df)} rows)")
 
 
 # ─── BCB Macro series ─────────────────────────────────────────────────────────
@@ -265,16 +328,39 @@ def fetch_sectoral_data():
 
 # ─── Yahoo Finance helper ─────────────────────────────────────────────────────
 
-def _yf_download(ticker: str, name: str, target_dir: str, start: str = "2000-01-01") -> None:
-    """Download one Yahoo Finance ticker and save as CSV."""
-    print(f"  yfinance [{ticker}] {name}...")
+def _yf_download(ticker: str, name: str, target_dir: str, start: str = _FULL_HISTORY_START) -> None:
+    """Download one yfinance ticker (incrementally if CSV exists) and save as CSV."""
+    csv_path = os.path.join(target_dir, f"{name}.csv")
+    effective_start, is_incremental = _resume_start(csv_path, start)
+
+    if is_incremental and effective_start == "":
+        last = _last_csv_date(csv_path)
+        print(f"  yfinance [{ticker}] — up to date ({last})")
+        return
+
+    print(f"  yfinance [{ticker}] {name}... (from {effective_start})")
     try:
-        df = yf.download(ticker, start=start, progress=False, auto_adjust=False)
-        if not df.empty:
-            df.to_csv(os.path.join(target_dir, f"{name}.csv"))
-            print(f"    -> saved ({len(df)} rows)")
-        else:
-            print(f"    no data returned")
+        new_df = yf.download(ticker, start=effective_start, progress=False, auto_adjust=False)
+        if new_df.empty:
+            print(f"    no new data")
+            return
+
+        if is_incremental:
+            try:
+                # yfinance CSVs use a two-row header (Price + Ticker)
+                existing = pd.read_csv(csv_path, header=[0, 1], index_col=0)
+                existing.index = pd.to_datetime(existing.index, errors="coerce")
+                existing = existing[existing.index.notna()]
+                combined = pd.concat([existing, new_df])
+                combined = combined[~combined.index.duplicated(keep="last")].sort_index()
+                combined.to_csv(csv_path)
+                print(f"    -> appended {len(new_df)} rows (total: {len(combined)})")
+                return
+            except Exception as e:
+                print(f"    append error, overwriting: {e}")
+
+        new_df.to_csv(csv_path)
+        print(f"    -> saved ({len(new_df)} rows)")
     except Exception as e:
         print(f"    error: {e}")
 
