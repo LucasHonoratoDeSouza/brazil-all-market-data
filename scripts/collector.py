@@ -73,7 +73,11 @@ def fetch_currency_data():
     tickers = {
         "usd_brl": "USDBRL=X",
         "eur_brl": "EURBRL=X",
-        "btc_usd": "BTC-USD"
+        "gbp_brl": "GBPBRL=X",
+        "jpy_brl": "JPYBRL=X",
+        "btc_usd": "BTC-USD",
+        "btc_brl": "BTC-BRL",
+        "eth_usd": "ETH-USD"
     }
     for name, ticker in tickers.items():
         try:
@@ -88,7 +92,8 @@ def fetch_equity_indices():
     print("Fetching equity indices...")
     indices = {
         "ibovespa": "^BVSP",
-        "ifix": "IFIX.SA"
+        "ifix": "IFIX.SA",
+        "small_caps": "SMLL.SA"
     }
     for name, ticker in indices.items():
         try:
@@ -106,7 +111,9 @@ def fetch_top_stocks():
         "B3SA3.SA", "WEGE3.SA", "ITSA4.SA", "JBSS3.SA", "BBAS3.SA", "RENT3.SA",
         "LREN3.SA", "MGLU3.SA", "GGBR4.SA", "CSAN3.SA", "EQTL3.SA", "RADL3.SA",
         "VIVT3.SA", "RAIL3.SA", "SUZB3.SA", "HAPV3.SA", "RDOR3.SA", "PRIO3.SA",
-        "EGIE3.SA", "CPLE6.SA", "TRPL4.SA"
+        "EGIE3.SA", "CPLE6.SA", "TRPL4.SA", "ELET3.SA", "ELET6.SA", "BPAC11.SA",
+        "CMIG4.SA", "BRFS3.SA", "TIMS3.SA", "SANB11.SA", "KLBN11.SA", "UGPA3.SA",
+        "NTCO3.SA", "YDUQ3.SA", "ENEV3.SA", "TAEE11.SA", "CYRE3.SA", "CCRO3.SA"
     ]
     for ticker in stocks:
         try:
