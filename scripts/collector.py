@@ -57,6 +57,11 @@ GLOBAL_MACRO_DIR      = os.path.join(BASE_DIR, "global_macro")
 BONDS_DIR             = os.path.join(BASE_DIR, "bonds")
 REAL_ASSETS_DIR       = os.path.join(BASE_DIR, "real_assets")
 ALTERNATIVES_DIR      = os.path.join(BASE_DIR, "alternatives")
+US_SP500_DIR          = os.path.join(BASE_DIR, "us_equities", "sp500")
+EUROPE_DIR            = os.path.join(BASE_DIR, "global_equities", "europe")
+ASIA_DIR              = os.path.join(BASE_DIR, "global_equities", "asia")
+LATAM_GLOBAL_DIR      = os.path.join(BASE_DIR, "global_equities", "latam")
+RATES_DIR             = os.path.join(BASE_DIR, "rates")
 
 ALL_DIRS = [
     MACRO_DIR, FIXED_INCOME_DIR, MACRO_SETORIAL_DIR,
@@ -65,6 +70,7 @@ ALL_DIRS = [
     CURRENCIES_DIR, COMMODITIES_DIR,
     GLOBAL_MACRO_DIR,
     BONDS_DIR, REAL_ASSETS_DIR, ALTERNATIVES_DIR,
+    US_SP500_DIR, EUROPE_DIR, ASIA_DIR, LATAM_GLOBAL_DIR, RATES_DIR,
 ]
 
 
@@ -245,6 +251,45 @@ BCB_MACRO_SERIES = {
     "ptax_cny_venda":               21631, # CNY/BRL PTAX venda
     "ptax_ars_venda":               3542,  # ARS/BRL PTAX venda
     "ptax_mxn_venda":               3544,  # MXN/BRL PTAX venda (100 MXN)
+    # ── PIB componentes pela ótica da demanda ──
+    "fbcf_pib":                     22100, # FBCF (% PIB)
+    "consumo_familias_pib":         22102, # Consumo das famílias (% PIB)
+    "consumo_governo_pib":          22101, # Consumo governo (% PIB)
+    "exportacoes_pib_dem":          22103, # Exportações bens/serv (% PIB)
+    "importacoes_pib_dem":          22104, # Importações bens/serv (% PIB)
+    "poupanca_bruta_pib":           22099, # Poupança bruta (% PIB)
+    "pib_trimestral_dessaz":        22109, # PIB trimestral dessazonalizado (R$ mi)
+    "ibc_br_dessaz":                24365, # IBC-Br dessazonalizado
+    "pms_servicos_volume":          25392, # PMS — volume de serviços (índice)
+    # ── Atividade — desagregações industriais ──
+    "producao_bens_capital":        21863, # PIM — bens de capital (índice)
+    "producao_bens_intermedios":    21864, # PIM — bens intermediários (índice)
+    "producao_bens_consumo":        21865, # PIM — bens de consumo (índice)
+    "producao_industrial_dessaz":   21862, # PIM dessazonalizado
+    # ── Mercado de trabalho — adicionais ──
+    "caged_admissoes":              28762, # CAGED — admissões brutas
+    "caged_desligamentos":          28761, # CAGED — desligamentos
+    "pnad_populacao_ocupada":       24371, # PNAD — população ocupada (mi)
+    "pnad_forca_trabalho":          28543, # PNAD — força de trabalho (mi)
+    # ── Monetário — adicionais ──
+    "base_monetaria":               1408,  # Base monetária (R$ mi)
+    "papel_moeda_poder_publico":    1383,  # PMPP — papel-moeda em poder do público
+    "reservas_bancarias":           1791,  # Reservas bancárias (R$ mi)
+    "nota_credito_bcb":             3034,  # Nota de crédito (% a.a.)
+    # ── Fiscal — adicionais ──
+    "resultado_primario_estados":   5534,  # Resultado primário estados/municípios (R$ mi)
+    "juros_nominais_nfsp":          4512,  # Juros nominais NFSP (R$ mi)
+    "divida_mob_federal":           4182,  # Dívida mobiliária federal (R$ bi)
+    "receita_total_gc":             7442,  # Receita total governo central (R$ mi)
+    "despesa_total_gc":             7443,  # Despesa total governo central (R$ mi)
+    "transferencias_constitucionais": 7428, # Transferências constitucionais (R$ mi)
+    # ── Setor externo — adicionais ──
+    "exportacoes_commodities_agro": 22768, # Exportações — commodities agro (US$ mi)
+    "importacoes_combustiveis":     22714, # Importações — combustíveis (US$ mi)
+    "importacoes_bens_capital":     22711, # Importações — bens de capital (US$ mi)
+    "remessas_lucros_dividendos":   22706, # Remessas lucros/dividendos (US$ mi)
+    "turismo_receitas":             13091, # Turismo — receitas (US$ mi)
+    "turismo_despesas":             13092, # Turismo — despesas (US$ mi)
 }
 
 
@@ -279,6 +324,36 @@ BCB_FIXED_INCOME_SERIES = {
     # ── Endividamento ──
     "endividamento_familias":   29037, # Endividamento das famílias (% renda)
     "comprometimento_renda":    29038, # Comprometimento de renda c/ serviço da dívida
+    # ── Taxas de juros por modalidade (% a.m.) ──
+    "juros_cheque_especial_pf":     20456, # Cheque especial PF (% a.m.)
+    "juros_cartao_rotativo_pf":     20447, # Cartão de crédito rotativo PF (% a.m.)
+    "juros_consignado_pf":          20446, # Crédito consignado PF (% a.m.)
+    "juros_veiculo_pf":             20448, # Financiamento de veículos PF (% a.m.)
+    "juros_imobiliario_pf":         20435, # Financiamento imobiliário PF (% a.m.)
+    "juros_capital_giro_pj":        20439, # Capital de giro PJ (% a.m.)
+    "juros_desconto_duplicatas_pj": 20440, # Desconto de duplicatas PJ (% a.m.)
+    "juros_conta_garantida_pj":     20441, # Conta garantida PJ (% a.m.)
+    # ── Inadimplência por modalidade ──
+    "inadimpl_cheque_especial":     21096, # Inadimplência cheque especial (%)
+    "inadimpl_cartao_credito":      21100, # Inadimplência cartão de crédito (%)
+    "inadimpl_veiculo_pf":          21097, # Inadimplência veículos PF (%)
+    "inadimpl_capital_giro_pj":     21101, # Inadimplência capital de giro PJ (%)
+    # ── Crédito por modalidade — saldos ──
+    "credito_cheque_especial":      20589, # Cheque especial — saldo (R$ mi)
+    "credito_cartao_credito":       20588, # Cartão de crédito — saldo (R$ mi)
+    "credito_consignado_saldo":     20590, # Consignado — saldo (R$ mi)
+    "credito_veiculos_pf":          20591, # Veículos PF — saldo (R$ mi)
+    "credito_imobiliario_pf":       20592, # Imobiliário PF — saldo (R$ mi)
+    "credito_capital_giro":         20600, # Capital de giro PJ — saldo (R$ mi)
+    # ── Títulos públicos — adicionais ──
+    "ltn_3m":                       10204, # LTN 3 meses (% a.a.)
+    "ltn_4y":                       10191, # LTN 4 anos (% a.a.)
+    "ntnf_3y":                      10189, # NTN-F 3 anos
+    "ntnf_5y":                      10188, # NTN-F 5 anos
+    "selic_meta_copom":             432,   # Meta Selic reunião COPOM (% a.a.)
+    "selic_over_mensal":            1178,  # Taxa Selic over acumulada no mês (% a.m.)
+    # ── Mercado de capitais ──
+    "emissao_debentures":           4440,  # Emissão de debêntures (R$ mi)
 }
 
 
@@ -304,24 +379,43 @@ BCB_SECTORAL_SERIES = {
     "producao_soja_ibge":           7391,  # Produção de soja (mil toneladas)
     "producao_milho_ibge":          7392,  # Produção de milho (mil toneladas)
     "producao_cana_ibge":           7393,  # Produção de cana-de-açúcar (mil toneladas)
+    # ── Setor externo setorial ──
+    "exportacoes_soja":             22769, # Exportações de soja em grão (US$ mi)
+    "exportacoes_petroleo_derivados": 22770, # Exportações petróleo e derivados (US$ mi)
+    "exportacoes_minério_ferro":    22771, # Exportações de minério de ferro (US$ mi)
+    "exportacoes_carne":            22772, # Exportações de carne bovina (US$ mi)
+    "exportacoes_celulose":         22773, # Exportações de celulose (US$ mi)
+    "exportacoes_cafe":             22774, # Exportações de café (US$ mi)
+    "exportacoes_acucar":           22775, # Exportações de açúcar (US$ mi)
+    # ── Energia ──
+    "consumo_energia_industrial":   1402,  # Consumo de energia elétrica — industrial (GWh)
+    "consumo_energia_residencial":  1401,  # Consumo de energia elétrica — residencial (GWh)
+    # ── Construção civil ──
+    "licencas_construcao":          7390,  # Licenças construção civil (índice)
+    "producao_insumos_construcao":  7389,  # Produção de insumos para construção
+    # ── Serviços ──
+    "pms_receita_servicos":         25406, # PMS — receita nominal serviços (índice)
+    "pms_servicos_transportes":     25419, # PMS — transportes
+    "pms_servicos_informacao":      25421, # PMS — informação e comunicação
+    "pms_servicos_profissionais":   25422, # PMS — atividades profissionais
 }
 
 
 def fetch_macro_data():
-    print("\n[1/14] Fetching macro & PTAX indicators from BCB/SGS...")
+    print("\n[ 1/19] Fetching macro & PTAX indicators from BCB/SGS...")
     ensure_dirs()
     for name, code in BCB_MACRO_SERIES.items():
         _fetch_bcb(code, name, MACRO_DIR)
 
 
 def fetch_fixed_income_data():
-    print("\n[2/14] Fetching fixed-income & credit indicators from BCB/SGS...")
+    print("\n[ 2/19] Fetching fixed-income & credit indicators from BCB/SGS...")
     for name, code in BCB_FIXED_INCOME_SERIES.items():
         _fetch_bcb(code, name, FIXED_INCOME_DIR)
 
 
 def fetch_sectoral_data():
-    print("\n[3/14] Fetching sectoral/activity indicators from BCB/SGS...")
+    print("\n[ 3/19] Fetching sectoral/activity indicators from BCB/SGS...")
     for name, code in BCB_SECTORAL_SERIES.items():
         _fetch_bcb(code, name, MACRO_SETORIAL_DIR)
 
@@ -404,11 +498,56 @@ CURRENCIES = {
     "atom_usd":   "ATOM-USD",
     "ltc_usd":    "LTC-USD",
     "usdt_brl":   "USDT-BRL",
+    # ── Mais criptoativos ──
+    "doge_usd":   "DOGE-USD",
+    "shib_usd":   "SHIB-USD",
+    "trx_usd":    "TRX-USD",
+    "xlm_usd":    "XLM-USD",
+    "near_usd":   "NEAR-USD",
+    "icp_usd":    "ICP-USD",
+    "algo_usd":   "ALGO-USD",
+    "apt_usd":    "APT-USD",
+    "arb_usd":    "ARB-USD",
+    "op_usd":     "OP-USD",
+    "inj_usd":    "INJ-USD",
+    "sui_usd":    "SUI20947-USD",
+    "sei_usd":    "SEI-USD",
+    "fil_usd":    "FIL-USD",
+    "hbar_usd":   "HBAR-USD",
+    "grt_usd":    "GRT-USD",
+    "sand_usd":   "SAND-USD",
+    "mana_usd":   "MANA-USD",
+    "axs_usd":    "AXS-USD",
+    "imx_usd":    "IMX-USD",
+    "stx_usd":    "STX-USD",
+    "aave_usd":   "AAVE-USD",
+    "uni_usd":    "UNI-USD",
+    "mkr_usd":    "MKR-USD",
+    "snx_usd":    "SNX-USD",
+    "crv_usd":    "CRV-USD",
+    "ldo_usd":    "LDO-USD",
+    "wbtc_usd":   "WBTC-USD",
+    "steth_usd":  "STETH-USD",
+    # ── FX cross rates adicionais ──
+    "usd_jpy":    "USDJPY=X",
+    "usd_chf":    "USDCHF=X",
+    "usd_aud":    "USDAUD=X",
+    "usd_brl":    "USDBRL=X",  # também como cross explícito
+    "gbp_usd":    "GBPUSD=X",
+    "usd_inr":    "USDINR=X",  # Rúpia indiana
+    "usd_krw":    "USDKRW=X",  # Won coreano
+    "usd_mxn":    "USDMXN=X",  # Peso mexicano
+    "usd_clp":    "USDCLP=X",  # Peso chileno
+    "usd_ars":    "USDARS=X",  # Peso argentino
+    "usd_try":    "USDTRY=X",  # Lira turca
+    "usd_zar":    "USDZAR=X",  # Rand sul-africano
+    "usd_rub":    "USDRUB=X",  # Rublo
+    "usd_idr":    "USDIDR=X",  # Rupia indonésia
 }
 
 
 def fetch_currency_data():
-    print("\n[4/14] Fetching BRL FX pairs & crypto from yfinance...")
+    print("\n[ 4/19] Fetching BRL FX pairs & crypto from yfinance...")
     for name, ticker in CURRENCIES.items():
         _yf_download(ticker, name, CURRENCIES_DIR)
 
