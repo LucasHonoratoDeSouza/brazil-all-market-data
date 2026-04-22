@@ -21,9 +21,10 @@ O projeto segue uma estrutura organizada por tipo de ativo e categoria de dado:
 
 Atualmente, o projeto já conta com:
 - **Macro:** SELIC diária, IPCA mensal, CDI diário, PIB, IGP-M.
-- **Moedas:** Histórico de USD/BRL e EUR/BRL.
-- **Ações:** Histórico de ~25 das principais ações da B3.
-- **Índices:** IBOVESPA e IFIX.
+- **Moedas:** Histórico de USD/BRL, EUR/BRL e cripto pares.
+- **Ações:** Histórico de dezenas das principais ações da B3.
+- **Índices:** IBOVESPA, IFIX e small caps.
+- **Mineração local derivada:** retornos diários e resumo estatístico por ativo em `data/mined/`.
 
 ## Como Contribuir
 
@@ -49,6 +50,11 @@ pip install pandas yfinance python-bcb requests
 Para atualizar todos os dados locais:
 ```bash
 python scripts/collector.py
+```
+
+Para minerar dados derivados a partir dos CSVs já coletados:
+```bash
+python scripts/mine_local_data.py
 ```
 
 ## Fontes
