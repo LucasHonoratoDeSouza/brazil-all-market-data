@@ -26,6 +26,7 @@ PRICE_DIRS = {
     ],
     "fii":       [BASE_DATA_DIR / "fiis"],
     "etf":       [BASE_DATA_DIR / "etfs"],
+    "bdr":       [BASE_DATA_DIR / "bdrs"],
     "currency":  [BASE_DATA_DIR / "currencies"],
     "commodity": [BASE_DATA_DIR / "commodities"],
 }
